@@ -1,5 +1,5 @@
 selBWD <- function(X, G, ctrlLCA = controlLCA(), ctrlReg = controlReg(),
-                   independence = FALSE, swap = FALSE, start = NULL,
+                   independence = FALSE, swap = FALSE, start = NULL, bicDiff = 0,
                    covariates = NULL, parallel = FALSE, checkG = TRUE, 
                    verbose = interactive())
 {
@@ -40,7 +40,8 @@ selBWD <- function(X, G, ctrlLCA = controlLCA(), ctrlReg = controlReg(),
   # variable selection------------------------------------------------------
   crit <- TRUE
   toRem <- toAdd <- NULL
-  zero <- (.Machine$double.eps)^(1/3)
+  # zero <- (.Machine$double.eps)^(1/3)
+  zero <- bicDiff
   first <- is.null(start)    # two removal steps when first iteration and starting with all variables
   iter <- 0
 
@@ -104,7 +105,7 @@ selBWD <- function(X, G, ctrlLCA = controlLCA(), ctrlReg = controlReg(),
     }
 
     # two removal steps when first iteration and starting with all variables
-    if ( first ) {
+    if ( first & is.null(start) ) {
       first <- FALSE
       next
     }
@@ -114,7 +115,8 @@ selBWD <- function(X, G, ctrlLCA = controlLCA(), ctrlReg = controlReg(),
     if ( swap ) {
       iter <- iter + 1
       srt <- sort(bicRem, decreasing = TRUE)
-      if ( length(srt) > 1 ) {
+      # if ( length(srt) > 1 ) {
+      if ( length(srt) > 1 | (length(srt) >= 1 & !removed) ) {
         # which variable in the clustering set do we swap with all the ones in the non-clustering set?
         if ( removed ) {
           # the variable to swap is the second with the largest evidence
@@ -157,7 +159,7 @@ selBWD <- function(X, G, ctrlLCA = controlLCA(), ctrlReg = controlReg(),
           if ( Max > zero ) {
             info[iter+1,5] <- "Accepted"
             swapped <- TRUE
-            Max <- max(bicSwapDiff)
+            Max <- max(bicSwapDiff, na.rm = TRUE)
             bicClusMod <- out[best,3]
             j <- match(toSwap, clus)
             clus <- c( clus[-j], toSwapIn )
@@ -256,7 +258,8 @@ selBWD <- function(X, G, ctrlLCA = controlLCA(), ctrlReg = controlReg(),
     if ( swap ) {
       iter <- iter + 1
       srt <- sort(bicAddDiff, decreasing = TRUE)
-      if ( length(srt) > 1 ) {
+      # if ( length(srt) > 1 ) {
+      if ( length(srt) > 1 | (length(srt) >= 1 & !added) ) {
         if ( length(noclus) != 0 ) {
           # which variable in the non-clustering set do we swap with all the ones in the clustering set?
           if ( added ) {
